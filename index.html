@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>cube timer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="header">
+        <h1 id="displayScramble">RRRRRR</h1>
+    </div>
+    
+    <div class="stopwatch">
+        <h1 id="displayTime">00:00.000</h1>
+        <h2 id="startMsg">&lt hold [space] to start &gt</h2>  
+    </div>
+
+    <div class="timesDisplay">
+        <div class="displayHeader">
+            <div class="num">
+                <h1>#</h1>
+            </div>
+
+            <div class="times">
+                <h1>times</h1>
+            </div>
+
+            <div class="scrambles">
+                <h1>scrambles</h1>
+            </div>
+
+            <div class="stats">
+                <h1>stats</h1>
+            </div>
+        </div>
+
+        <div class="displayBody">
+            <ul id="timesIndex"></ul>
+            <ul id="timesList"></ul>
+            <ul id="scramblesList"></ul>
+            <ul id="statCategories">
+                <li>single</li>
+                <li>mean of 3</li>
+                <li>avg of 5</li>
+                <li>avg of 12</li>
+            </ul>
+            <ul id="current">
+                <li>current</li>
+            </ul>
+            <ul id="best">
+                <li>best</li>
+            </ul>
+        </div>
+        
+    </div>
+
+    <script>
+        let elapsed;
+        let startTime;
+        let timer;
+        let isRunning = false;
+        let ready = false;
+        let interrupted = false;
+        let waitTime = false;
+        
+        let [minutes, seconds, milliseconds] = [0,0,0];
+        const displayTime = document.getElementById("displayTime");
+
+        let scramble = "";
+        const scrambleMoves = ["R","R'","U","U'","L","L'","F","F'","B","B'","D","D'"];
+        const scramblesList = document.getElementById("scramblesList");
+        const displayScramble = document.getElementById("displayScramble");
+
+        const timesList = document.getElementById("timesList");
+        const timesIndex = document.getElementById("timesIndex");
+        let index = 1;
+
+        newScramble();
+
+        document.addEventListener("keydown", function(event) {
+            event.preventDefault;
+            if (isRunning) {
+                watchStop();
+            } else if (!isRunning && !ready) {
+                if (event.code === "Space") {
+                    interrupted = false;
+                    displayTime.style.color = "firebrick";
+                    startMsg.style.color = "firebrick";
+                    startMsg.innerHTML = "&lt wait &gt";
+                    setTimeout(() => {    
+                        if (!interrupted) {
+                            displayTime.style.color = "forestgreen";
+                            displayTime.innerHTML = "00.000";
+                            startMsg.style.color = "forestgreen";
+                            startMsg.innerHTML = "&lt release to start &gt";
+                            ready = true;
+                        } else {
+                            displayTime.style.color = "black";
+                            startMsg.style.color = "gray";
+                            interrupted = false;
+                        }
+                    }, 300);
+                }
+            }
+        });
+
+        document.addEventListener("keyup", function(event) {
+            if (event.code === "Space") {
+                event.preventDefault;
+                if (!isRunning && ready) {
+                    ready = false;
+                    watchStart();
+                }
+                else {   
+                    interrupted = true;
+                    startMsg.innerHTML = "&lt hold [space] to start &gt";
+                }
+            }
+        });
+
+        scramblesList.addEventListener("scroll", () => {
+            timesIndex.scrollTop = scramblesList.scrollTop;
+            timesList.scrollTop = scramblesList.scrollTop;
+        });
+        
+        function updateTime() {
+            elapsed = Math.round(performance.now() - startTime);
+            
+            displayTime.innerHTML = formatTime();
+            timer = requestAnimationFrame(updateTime);
+        }
+
+        function watchStart() {
+            [minutes, seconds, milliseconds] = [0,0,0];
+            startMsg.innerHTML = "";
+            displayTime.style.color = "black";
+            startMsg.style.color = "gray";
+            isRunning = true;
+            startTime = performance.now();
+            timer = requestAnimationFrame(updateTime);
+        }
+
+        function watchStop() {
+            startMsg.innerHTML = "< hold [space] to start >";
+            cancelAnimationFrame(timer);
+            isRunning = false;
+            
+            updateDisplay();
+            newScramble();
+        }
+
+        function updateDisplay() {
+            let li = document.createElement("li");
+            li.textContent = formatTime();
+            timesList.prepend(li);
+  
+            li = document.createElement("li"); 
+            li.textContent = index;
+            timesIndex.prepend(li);
+            index += 1; 
+
+            li = document.createElement("li");
+            li.textContent = scramble;
+            scramblesList.prepend(li);
+        }
+
+        function newScramble() {
+            scramble = "";
+            let r = "";
+            for (let i = 0; i < 20; i++) {
+                while (true) {
+                    let s = Math.floor(Math.random() * 12);
+                    if (s != r) {
+                        r = s;
+                        break;
+                    }
+                }
+                scramble += scrambleMoves[r]+" ";
+            }
+            displayScramble.innerHTML = scramble;
+        }
+
+        function formatTime() {
+            let s; 
+            let ms;
+
+            if (elapsed > 59999) {
+                minutes = Math.floor(elapsed/60000);
+                seconds = Math.floor((elapsed - (minutes*60000))/1000);
+                milliseconds = elapsed - (minutes*60000) - (seconds*1000);
+            } else if (elapsed > 999) {
+                minutes = 0;
+                seconds = Math.floor(elapsed/1000);
+                milliseconds = elapsed - (seconds*1000);
+            } else {
+                minutes = 0;
+                seconds = 0;
+                milliseconds = elapsed;
+            }
+
+            if (milliseconds === 0) 
+                ms = "000";
+            else if (milliseconds < 10)
+                ms = "00"+milliseconds;
+            else if (milliseconds < 100)
+                ms = "0"+milliseconds;
+            else
+                ms = milliseconds;
+
+            if (seconds === 0) 
+                s = "00";
+            else if (seconds < 10)
+                s = "0"+seconds;
+            else    
+                s = seconds;
+
+            if (minutes === 0)
+                return s+"."+ms;
+            else
+                return minutes+":"+s+"."+ms; 
+        }
+    </script>
+
+</body>
+</html>
